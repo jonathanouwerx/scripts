@@ -1,0 +1,2 @@
+scripts_bin/*
+!scripts_bin/test.sh
