@@ -1,2 +1,7 @@
 scripts_bin/*
 !scripts_bin/test.sh
+
+# User-specific config
+.config.json
+
+.DS_Store
