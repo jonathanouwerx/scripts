@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -42,6 +43,12 @@ func main() {
 		AssertTrue(t, strings.Contains(outputStr, "go") ||
 			strings.Contains(outputStr, "not found") ||
 			strings.Contains(outputStr, "exit status"), "Should attempt Go compilation")
+	}
+
+	// Clean up any test binary that was created
+	testBinaryPath := filepath.Join("..", "opt", "programs", "gotest")
+	if FileExists(t, testBinaryPath) {
+		_ = os.Remove(testBinaryPath) // Ignore error - cleanup
 	}
 }
 
@@ -101,7 +108,14 @@ int main() {
 		AssertTrue(t, strings.Contains(outputStr, "Compiled"), "Should report successful compilation")
 	} else {
 		AssertTrue(t, strings.Contains(outputStr, "gcc") ||
+			strings.Contains(outputStr, "clang") ||
 			strings.Contains(outputStr, "not found"), "Should attempt C compilation")
+	}
+
+	// Clean up any test binary that was created
+	testBinaryPath := filepath.Join("..", "opt", "programs", "ctest")
+	if FileExists(t, testBinaryPath) {
+		_ = os.Remove(testBinaryPath) // Ignore error - cleanup
 	}
 }
 
@@ -133,6 +147,12 @@ int main() {
 	} else {
 		AssertTrue(t, strings.Contains(outputStr, "g++") ||
 			strings.Contains(outputStr, "not found"), "Should attempt C++ compilation")
+	}
+
+	// Clean up any test binary that was created
+	testBinaryPath := filepath.Join("..", "opt", "programs", "cpptest")
+	if FileExists(t, testBinaryPath) {
+		_ = os.Remove(testBinaryPath) // Ignore error - cleanup
 	}
 }
 
@@ -186,6 +206,12 @@ func main() {
 		} else {
 			// Should not fail due to bad --name parsing
 			AssertFalse(t, strings.Contains(outputStr, "Usage:"), "Should not show usage error for valid --name syntax")
+		}
+
+		// Clean up any test binary that was created
+		testBinaryPath := filepath.Join("..", "opt", "programs", customName)
+		if FileExists(t, testBinaryPath) {
+			_ = os.Remove(testBinaryPath) // Ignore error - cleanup
 		}
 	}
 }
@@ -260,5 +286,11 @@ func main() {
 	} else {
 		// Failed compilation (due to missing compiler)
 		AssertTrue(t, strings.Contains(outputStr, "go") || strings.Contains(outputStr, "not found"), "Should attempt Go compilation")
+	}
+
+	// Clean up any test binary that was created
+	testBinaryPath := filepath.Join("..", "opt", "programs", "output_test_bin")
+	if FileExists(t, testBinaryPath) {
+		_ = os.Remove(testBinaryPath) // Ignore error - cleanup
 	}
 }

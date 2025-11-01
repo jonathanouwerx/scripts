@@ -123,6 +123,12 @@ func main() {
 		AssertTrue(t, strings.Contains(outputStr, "Compiled") ||
 			strings.Contains(outputStr, "hello.go"), "Should report successful compilation")
 	}
+
+	// Clean up any test binary that was created
+	testBinaryPath := filepath.Join("..", "opt", "programs", "testcompile")
+	if FileExists(t, testBinaryPath) {
+		_ = os.Remove(testBinaryPath) // Ignore error - cleanup
+	}
 }
 
 func TestCLI_RemoveScript(t *testing.T) {
@@ -179,6 +185,45 @@ func TestCLI_RemoveBinary(t *testing.T) {
 
 	// Verify binary was actually removed
 	AssertFalse(t, FileExists(t, binPath), "Binary should no longer exist")
+}
+
+func TestCLI_ListScriptsAndBinaries(t *testing.T) {
+	// Use the actual scripts_bin directory for CLI testing
+	scriptsBinDir := "../scripts_bin"
+
+	// Check if scripts_bin directory exists and has scripts
+	if _, err := os.Stat(scriptsBinDir); os.IsNotExist(err) {
+		t.Skip("scripts_bin directory does not exist, skipping list test")
+	}
+
+	// The scripts binary should be in the parent directory (project root)
+	scriptsPath := filepath.Join("..", "scripts")
+
+	// Run list command
+	cmd := exec.Command(scriptsPath, "list")
+	output, err := cmd.CombinedOutput()
+
+	AssertNil(t, err, "List command should succeed")
+	outputStr := string(output)
+
+	// Should contain scripts header
+	AssertTrue(t, strings.Contains(outputStr, "Available scripts:"), "Should show available scripts header")
+
+	// Should list some scripts (at minimum the ones we know exist)
+	files, err := filepath.Glob(filepath.Join(scriptsBinDir, "*.sh"))
+	if err == nil && len(files) > 0 {
+		// Should contain at least one script name
+		for _, file := range files {
+			scriptName := strings.TrimSuffix(filepath.Base(file), ".sh")
+			AssertTrue(t, strings.Contains(outputStr, scriptName), "Should list script: "+scriptName)
+		}
+	}
+
+	// Should contain binaries header (may or may not have binaries)
+	if strings.Contains(outputStr, "Available binaries") {
+		// If binaries section exists, it should show the path
+		AssertTrue(t, strings.Contains(outputStr, "/opt/programs") || strings.Contains(outputStr, "opt/programs"), "Should show binaries directory path")
+	}
 }
 
 func TestCLI_InvalidCommands(t *testing.T) {

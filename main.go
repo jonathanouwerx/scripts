@@ -45,24 +45,38 @@ func expandPath(path string) string {
 }
 
 func loadConfig() (*Config, error) {
-	// Store config in the scripts directory itself
-	execPath := os.Args[0]
-	scriptsDir := filepath.Dir(execPath)
+	// Try to find the config file in the correct location
+	var scriptsDir string
 
-	// If execPath is just a command name (in PATH), try to find the actual scripts directory
-	if !filepath.IsAbs(scriptsDir) && scriptsDir != "." {
-		// execPath is a relative path, get the actual directory
-		var err error
-		scriptsDir, err = os.Getwd()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get current directory: %v", err)
+	// First, try to get the actual executable path
+	if execPath, err := os.Executable(); err == nil {
+		execDir := filepath.Dir(execPath)
+		// Check if this looks like a scripts installation directory
+		// (contains the scripts binary and possibly scripts_bin)
+		if info, err := os.Stat(filepath.Join(execDir, "scripts_bin")); err == nil && info.IsDir() {
+			scriptsDir = execDir
+		} else if info, err := os.Stat(filepath.Join(execDir, "scripts")); err == nil && info.Mode()&0100 != 0 {
+			// Check if there's a scripts binary in this directory
+			scriptsDir = execDir
 		}
-	} else if scriptsDir == "." {
-		// Running from current directory
-		var err error
-		scriptsDir, err = os.Getwd()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get current directory: %v", err)
+	}
+
+	// If we couldn't find the scripts directory from the executable,
+	// check if we're running from the source directory
+	if scriptsDir == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			if info, err := os.Stat(filepath.Join(cwd, "scripts_bin")); err == nil && info.IsDir() {
+				scriptsDir = cwd
+			}
+		}
+	}
+
+	// As a last resort, use user config directory
+	if scriptsDir == "" {
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			scriptsDir = filepath.Join(homeDir, ".config", "scripts")
+		} else {
+			return nil, fmt.Errorf("could not determine config directory")
 		}
 	}
 
@@ -96,24 +110,38 @@ func loadConfig() (*Config, error) {
 }
 
 func saveConfig(config *Config) error {
-	// Store config in the scripts directory itself (same logic as loadConfig)
-	execPath := os.Args[0]
-	scriptsDir := filepath.Dir(execPath)
+	// Use the same logic as loadConfig to find the scripts directory
+	var scriptsDir string
 
-	// If execPath is just a command name (in PATH), try to find the actual scripts directory
-	if !filepath.IsAbs(scriptsDir) && scriptsDir != "." {
-		// execPath is a relative path, get the actual directory
-		var err error
-		scriptsDir, err = os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get current directory: %v", err)
+	// First, try to get the actual executable path
+	if execPath, err := os.Executable(); err == nil {
+		execDir := filepath.Dir(execPath)
+		// Check if this looks like a scripts installation directory
+		// (contains the scripts binary and possibly scripts_bin)
+		if info, err := os.Stat(filepath.Join(execDir, "scripts_bin")); err == nil && info.IsDir() {
+			scriptsDir = execDir
+		} else if info, err := os.Stat(filepath.Join(execDir, "scripts")); err == nil && info.Mode()&0100 != 0 {
+			// Check if there's a scripts binary in this directory
+			scriptsDir = execDir
 		}
-	} else if scriptsDir == "." {
-		// Running from current directory
-		var err error
-		scriptsDir, err = os.Getwd()
-		if err != nil {
-			return fmt.Errorf("failed to get current directory: %v", err)
+	}
+
+	// If we couldn't find the scripts directory from the executable,
+	// check if we're running from the source directory
+	if scriptsDir == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			if info, err := os.Stat(filepath.Join(cwd, "scripts_bin")); err == nil && info.IsDir() {
+				scriptsDir = cwd
+			}
+		}
+	}
+
+	// As a last resort, use user config directory
+	if scriptsDir == "" {
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			scriptsDir = filepath.Join(homeDir, ".config", "scripts")
+		} else {
+			return fmt.Errorf("could not determine config directory")
 		}
 	}
 
@@ -334,6 +362,7 @@ func printHelp() {
 	fmt.Println()
 	fmt.Println("USAGE:")
 	fmt.Println("  scripts <script_name> [args...]    Run a script from scripts_bin/")
+	fmt.Println("  scripts list                        List available scripts and binaries")
 	fmt.Println("  scripts ready <script_name> [-a]    Make scripts in scripts_bin executable")
 	fmt.Println("  scripts add <script.sh>             Add script to scripts_bin/")
 	fmt.Println("  scripts compile <source> [--name <binary>]    Compile source to binary")
@@ -345,6 +374,10 @@ func printHelp() {
 	fmt.Println("COMMANDS:")
 	fmt.Println("  <script_name>    Run the specified script (must be in scripts_bin/)")
 	fmt.Println("                   Example: scripts gitprune --dry-run")
+	fmt.Println()
+	fmt.Println("  list             List all available scripts in scripts_bin/ and binaries in ~/opt/programs/")
+	fmt.Println("                   Shows script names with executable status and available binaries")
+	fmt.Println("                   Example: scripts list")
 	fmt.Println()
 	fmt.Println("  ready            Make scripts in scripts_bin executable")
 	fmt.Println("                   - <script_name> makes script_name.sh in scripts_bin executable")
@@ -376,6 +409,7 @@ func printHelp() {
 	fmt.Println("  help             Show this help message")
 	fmt.Println()
 	fmt.Println("EXAMPLES:")
+	fmt.Println("  scripts list                  # List all available scripts and binaries")
 	fmt.Println("  scripts gitprune              # Run gitprune.sh")
 	fmt.Println("  scripts test arg1 arg2        # Run test.sh with arguments")
 	fmt.Println("  scripts ready myscript        # Make myscript.sh executable")
@@ -581,6 +615,71 @@ func main() {
 			}
 
 			fmt.Printf("Removed script %s\n", name)
+		}
+		return
+	}
+
+	if command == "list" {
+		// Handle list command (show available scripts and binaries)
+		if len(os.Args) > 2 {
+			fmt.Println("Usage: scripts list")
+			fmt.Println("  Show all available scripts in scripts_bin/ and binaries in ~/opt/programs/")
+			os.Exit(1)
+		}
+
+		hasOutput := false
+
+		// List scripts
+		if _, err := os.Stat(config.ScriptDir); err == nil {
+			// Get all .sh files in scripts_bin
+			files, err := filepath.Glob(filepath.Join(config.ScriptDir, "*.sh"))
+			if err == nil && len(files) > 0 {
+				fmt.Println("Available scripts:")
+				for _, file := range files {
+					scriptName := strings.TrimSuffix(filepath.Base(file), ".sh")
+					status := "not executable"
+					if isExecutable(file) {
+						status = "executable"
+					}
+					fmt.Printf("  %s (%s)\n", scriptName, status)
+				}
+				hasOutput = true
+			}
+		}
+
+		// List binaries
+		if _, err := os.Stat(config.BinDir); err == nil {
+			// Get all files in bin directory (excluding directories and the scripts binary itself)
+			entries, err := os.ReadDir(config.BinDir)
+			if err == nil {
+				var binaries []string
+				for _, entry := range entries {
+					if !entry.IsDir() && entry.Name() != "scripts" {
+						// Check if it's executable
+						binPath := filepath.Join(config.BinDir, entry.Name())
+						if isExecutable(binPath) {
+							binaries = append(binaries, entry.Name())
+						}
+					}
+				}
+
+				if len(binaries) > 0 {
+					if hasOutput {
+						fmt.Println()
+					}
+					fmt.Printf("Available binaries (%s):\n", config.BinDir)
+					for _, binary := range binaries {
+						fmt.Printf("  %s\n", binary)
+					}
+					hasOutput = true
+				}
+			}
+		}
+
+		if !hasOutput {
+			fmt.Println("No scripts or binaries found.")
+			fmt.Printf("Scripts directory: %s\n", config.ScriptDir)
+			fmt.Printf("Binaries directory: %s\n", config.BinDir)
 		}
 		return
 	}
