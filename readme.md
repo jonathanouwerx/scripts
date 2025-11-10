@@ -25,55 +25,77 @@ A powerful CLI tool for managing shell scripts and compiling binaries from multi
 
 Compiled binaries are placed in `~/opt/programs/` and can be run directly from PATH.
 
+## Installation
+
+Follow these steps to set up the Scripts Tool from scratch.
+
+### Prerequisites
+
+- **Go 1.21+** - Download from [golang.org](https://golang.org/dl/)
+- **Git** - For cloning the repository
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/jonathanouwerx/scripts.git
+cd scripts
+```
+
+### Step 2: Build the Binary
+
+```bash
+# Build the scripts binary
+make build
+
+# Or build manually with Go
+go build -o scripts .
+```
+
+### Step 3: Install the Binary
+
+```bash
+# Option 1: Move to a directory in your PATH (recommended)
+sudo mv scripts /usr/local/bin/
+```
+
+### Step 4: Verify Installation
+
+```bash
+# Check that scripts is available
+scripts --help
+
+# You should see the help output with available commands
+```
+
+### Step 5: Initial Setup
+
+The tool will automatically create its configuration when first run. It will:
+
+1. Create a `scripts_bin/` directory in your scripts repository
+2. Set up `~/opt/programs/` for compiled binaries
+3. Create a `.config.json` file with your paths
+
+```bash
+# First run will auto-configure
+scripts list
+
+# Should show empty lists (no scripts or binaries yet)
+```
+
+### Step 6: Add Scripts Directory to PATH (Optional)
+
+For easier access to compiled binaries:
+
+```bash
+# Add to your shell profile
+echo 'export PATH="$HOME/opt/programs:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 ## Configuration
 
-Auto-creates `.config.json` in the scripts directory with:
-- `scriptDir`: Path to scripts directory
-- `binDir`: Path for compiled binaries (`~/opt/programs`)
+The tool **automatically creates** a `.config.json` file in the scripts directory on first run with these default paths:
+- `scriptDir`: `~/code/personal/scripts/scripts_bin` (where your scripts are stored)
+- `binDir`: `~/opt/programs` (where compiled binaries are placed)
 
-**Setup:**
-```bash
-# Copy the example config
-cp .config.json.example .config.json
-
-# Edit paths as needed
-# scriptDir: Where your scripts are stored
-# binDir: Where compiled binaries go
-```
-
-**Note:** `.config.json` is gitignored - each user has their own configuration.
-
-## Usage
-
-```bash
-# Run scripts
-scripts my-script arg1 arg2
-
-# Make scripts executable
-scripts ready myscript        # single script
-scripts ready -a             # all scripts
-
-# Add scripts to scripts_bin
-scripts add myscript.sh
-
-# Remove scripts
-scripts rm myscript
-
-# Compile programs
-scripts compile main.go
-scripts compile main.go --name myapp
-scripts compile program.py
-scripts compile hello.c
-
-# Remove binaries
-scripts rm --bin myapp
-
-# Show help
-scripts help
-```
-
-## Requirements
-
-- **PyInstaller** for Python compilation: `pip install pyinstaller`
-- **Language compilers** (Go, GCC, etc.) must be installed for compilation
-- Add `~/opt/programs` to your PATH for direct binary execution
+**Note:** `.config.json` is gitignored - each user gets their own personalized configuration.
